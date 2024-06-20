@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_from_directory, abort, request, jsonify
+from flask import Flask, render_template, send_from_directory, abort, request, jsonify, Response
 import requests, base64, aiohttp, asyncio, os, json
 
 TOKEN = os.getenv("TOKEN")
@@ -60,7 +60,7 @@ async def fetch_content(session, url, is_json, return_git_json_wrapper=False):
             return base64.b64decode(content["content"]).decode("utf-8")
         response.raise_for_status()
         
-def get_game_file_url(game_id, game_state):
+def get_game_file_url(game_id, game_state, platform):
     game_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/contents/settings.json?ref={game_id}"
     
     headers = {
@@ -80,6 +80,9 @@ def get_game_file_url(game_id, game_state):
     if not settings['game_states'][game_state]['enabled']:
         return False
     
+    if platform not in settings['game_states'][game_state]['platforms']:
+        return False
+    
     version = settings['game_states'][game_state]['latest_version']
         
     releases_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/releases/tags/{version}-{game_id}"
@@ -94,7 +97,7 @@ def get_game_file_url(game_id, game_state):
     
     game_asset_url = False
     for asset in assets_list:
-        if asset['name'] == "windows.zip":
+        if asset['name'] == f"{platform}.zip":
             game_asset_url = asset['url']
             
     return game_asset_url
@@ -195,16 +198,30 @@ def download_game():
         access_key = json_file['key']
         game_id = json_file['id']
         game_state = json_file['state']
+        platform = json_file['platform']
     except:
         abort(400)
     
     game = check_game_available(access_key, game_id, game_state)
     if not game: abort(404)
     
-    game_file_url = get_game_file_url(game_id, game_state)
+    game_file_url = get_game_file_url(game_id, game_state, platform)
     if not game_file_url: abort(404)
     
-    return jsonify(game_file_url)
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/octet-stream"
+    }
+    
+    response = requests.get(game_file_url, headers=headers, stream=True)
+    if response.status_code != 200: abort(404)
+    
+    def generate():
+        for chunk in response.iter_content(chunk_size=8192):
+            yield chunk
+
+    content_disposition = response.headers.get('content-disposition', 'attachment; filename=game.zip')
+    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream'})
 
 if __name__ == "__main__":
     app.run(debug=True)
