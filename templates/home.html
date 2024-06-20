@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<head>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="icon" href="/static/icon.png" type="image/x-png" />
+    <title>Twilight Studios</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            font-family: "Poppins", sans-serif;
+            font-weight: 300;
+            letter-spacing: -0.25px;
+            word-spacing: -0.25px;
+            color: white;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: url('/static/background.jpg');
+            background-size: cover;
+            background-position: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        img {
+            width: 30vw;
+        }
+
+        h1 {
+            margin-top: -2.5vw;
+            font-weight: 700;
+        }
+
+        .line {
+            background-color: white;
+            width: 30vw;
+            height: 2px;
+            margin: 2vw;
+        }
+
+        h2 {
+            font-weight: 400;
+        }
+
+        .buttons {
+            margin-top: 1vw;
+            display: flex;
+            width: 500px;
+            justify-content: space-evenly;
+        }
+
+        .button {
+            background-color: #B81DE3;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 220px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        i {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+<img src="/static/twilightStudios.png">
+<h1>Coming soon...</h1>
+<div class="line"></div>
+<h2>Are you a playtester?</h2>
+<div class="buttons">
+    <div class="button" id="download">
+        <i class='bx bxs-package'></i>
+        Download the Launcher
+    </div>
+    <div class="button" id="email">
+        <i class='bx bxs-envelope' ></i>
+        Contact Support
+    </div>
+</div>
+<script>
+    document.getElementById('download').addEventListener("click", (event) => {
+        window.open("{{ url_for('download_launcher') }}", '_blank');
+    });
+    document.getElementById('email').addEventListener("click", (event) => {
+        window.open("mailto:thenebulo@outlook.com", '_blank');
+    });   
+</script>
+</body>
+</html>
