@@ -85,21 +85,16 @@ def get_game_file_url(game_id, game_state):
     releases_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/releases/tags/{version}-{game_id}"
     response = requests.get(releases_base_url, headers=headers)
     if response.status_code != 200: return False
-    
-    content = response.json()["content"]
-    release_info = json.loads(base64.b64decode(content).decode("utf-8"))
-    release_id = release_info['id']
+    release_id = response.json()['id']
     
     assets_list_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/releases/{release_id}/assets"
     response = requests.get(assets_list_base_url, headers=headers)
     if response.status_code != 200: return False
-    
-    content = response.json()["content"]
-    assets_list = json.loads(base64.b64decode(content).decode("utf-8"))
+    assets_list = response.json()
     
     game_asset_url = False
     for asset in assets_list:
-        if asset['name'] == "game.zip":
+        if asset['name'] == "windows.zip":
             game_asset_url = asset['url']
             
     return game_asset_url
@@ -209,7 +204,7 @@ def download_game():
     game_file_url = get_game_file_url(game_id, game_state)
     if not game_file_url: abort(404)
     
-    return game_file_url
+    return jsonify(game_file_url)
 
 if __name__ == "__main__":
     app.run(debug=True)
