@@ -149,7 +149,7 @@ async def get_game_info(game_id, game_state):
             },
             "settings": json.loads(settings),
             "notes" : {
-                "patch_note_titles": json.loads(patch_note_titles),
+                "titles": json.loads(patch_note_titles),
                 "patch_notes": b_patch_notes
             },
             "state" : game_state
