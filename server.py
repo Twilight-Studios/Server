@@ -66,7 +66,7 @@ async def fetch_content(session: aiohttp.ClientSession, url, is_json, return_git
             return base64.b64decode(json["content"]).decode("utf-8")
         response.raise_for_status()
         
-def get_game_file_url(game_id, game_state, platform):
+def get_game_file(game_id, game_state, platform):
     game_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/contents/settings.json?ref={game_id}"
     
     headers = {
@@ -102,11 +102,13 @@ def get_game_file_url(game_id, game_state, platform):
     assets_list = response.json()
     
     game_asset_url = False
+    game_asset_size = 0
     for asset in assets_list:
         if asset['name'] == f"{platform}.zip":
             game_asset_url = asset['url']
+            game_asset_size = asset['size']
             
-    return game_asset_url
+    return game_asset_url, game_asset_size
         
 
 async def get_game_info(game_id, game_state):
@@ -238,7 +240,7 @@ def download_game():
     game = check_game_available(access_key, game_id, game_state)
     if not game: abort(404)
     
-    game_file_url = get_game_file_url(game_id, game_state, platform)
+    game_file_url, game_file_size = get_game_file(game_id, game_state, platform)
     if not game_file_url: abort(404)
     
     headers = {
@@ -254,7 +256,7 @@ def download_game():
             yield chunk
 
     content_disposition = response.headers.get('content-disposition', 'attachment; filename=game.zip')
-    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream'})
+    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream', 'Content-Size': str(game_file_size)})
 
 if __name__ == "__main__":
     app.run(debug=True)
