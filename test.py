@@ -20,7 +20,7 @@ def test_download_game():
     
     if response.status_code == 200:
         file_name = response.headers.get('Content-Disposition').split('filename=')[-1]
-        total_size = int(response.headers.get('Content-Size', 0))
+        total_size = int(response.headers.get('Content-Length', 0))
         
         chunk_size = 8192
         with open(file_name, 'wb') as file, tqdm(

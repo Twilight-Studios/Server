@@ -256,7 +256,7 @@ def download_game():
             yield chunk
 
     content_disposition = response.headers.get('content-disposition', 'attachment; filename=game.zip')
-    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream', 'Content-Size': str(game_file_size)})
+    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream', 'Content-Length': str(game_file_size)})
 
 if __name__ == "__main__":
     app.run(debug=True)
