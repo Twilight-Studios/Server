@@ -167,7 +167,7 @@ async def get_game_info(game_id, game_state):
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("home.html")
 
 @app.route("/download")
 def download_launcher():
@@ -218,7 +218,7 @@ def get_latest_launcher_url(version):
     
     release = response.json()
     for asset in release['assets']:
-        if asset['name'].startswith(f"Twilight.Studios.Launcher.Setup.{version}.exe"):
+        if asset['name'].startswith(f"Twilight-Studios-Launcher-Setup-{version}.exe"):
             return asset['url'], asset['size']
     
     return None, None
@@ -314,7 +314,7 @@ def download_game():
 
 @app.route("/updates/<path>")
 def updates(path: str):
-    path = path.replace(" ", ".")
+    path = path.replace(" ", "-")
     
     url = f"https://api.github.com/repos/{OWNER}/{APP_NAME}/releases/latest"
     headers = {
