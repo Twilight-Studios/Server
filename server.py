@@ -2,6 +2,11 @@ from flask import Flask, render_template, send_from_directory, abort, request, j
 import requests, base64, aiohttp, asyncio, os, json
 
 TOKEN = os.getenv("TOKEN")
+APP_NAME = "Launcher"
+OWNER = "Twilight-Studios"
+REPO = "Games"
+
+app = Flask(__name__)
 
 def check_user_exist(access_key):
     with open('access.json') as f: access_keys = json.load(f)
@@ -28,7 +33,7 @@ def check_game_available(access_key, game_id, game_state=None):
     return True
 
 def get_games():
-    branches_url = "https://api.github.com/repos/Twilight-Studios/Games/branches"
+    branches_url = f"https://api.github.com/repos/{OWNER}/{REPO}/branches"
     headers = {
         "Authorization": f"token {TOKEN}",
         "Accept": "application/vnd.github.v4+json"
@@ -67,7 +72,7 @@ async def fetch_content(session: aiohttp.ClientSession, url, is_json, return_git
         response.raise_for_status()
         
 def get_game_file(game_id, game_state, platform):
-    game_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/contents/settings.json?ref={game_id}"
+    game_base_url = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/settings.json?ref={game_id}"
     
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -91,12 +96,12 @@ def get_game_file(game_id, game_state, platform):
     
     version = settings['game_states'][game_state]['latest_version']
         
-    releases_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/releases/tags/{version}-{game_id}"
+    releases_base_url = f"https://api.github.com/repos/{OWNER}/{REPO}/releases/tags/{version}-{game_id}"
     response = requests.get(releases_base_url, headers=headers)
     if response.status_code != 200: return False
     release_id = response.json()['id']
     
-    assets_list_base_url = f"https://api.github.com/repos/Twilight-Studios/Games/releases/{release_id}/assets"
+    assets_list_base_url = f"https://api.github.com/repos/{OWNER}/{REPO}/releases/{release_id}/assets"
     response = requests.get(assets_list_base_url, headers=headers)
     if response.status_code != 200: return False
     assets_list = response.json()
@@ -113,7 +118,8 @@ def get_game_file(game_id, game_state, platform):
 
 async def get_game_info(game_id, game_state):
     async with aiohttp.ClientSession() as session:
-        game_base_url = "https://api.github.com/repos/Twilight-Studios/Games/contents/{}?ref=" + game_id
+        repo_base = f"https://api.github.com/repos/{OWNER}/{REPO}/contents/"
+        game_base_url = repo_base + "{}?ref=" + game_id
         
         files_to_fetch = [
             ("art/icon.png", False),
@@ -159,15 +165,63 @@ async def get_game_info(game_id, game_state):
         
         return game_info  
 
-app = Flask(__name__)
-
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("index.html")
 
 @app.route("/download")
 def download_launcher():
-    return send_from_directory("./TwilightLauncherInstaller.exe")
+    latest_version = get_latest_version()
+    asset_url, asset_size = get_latest_launcher_url(latest_version)
+    if not asset_url or not asset_size:
+        abort(404, description="Launcher not found")
+    
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/octet-stream"
+    }
+    
+    response = requests.get(asset_url, headers=headers, stream=True)
+    if response.status_code != 200:
+        abort(404, description="Launcher download failed")
+    
+    def generate():
+        for chunk in response.iter_content(chunk_size=8192):
+            yield chunk
+
+    content_disposition = response.headers.get('content-disposition', f'attachment; filename=TwilightLauncherInstaller.exe')
+    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream', 'Content-Length': str(asset_size)})
+
+def get_latest_version():
+    url = f"https://api.github.com/repos/{OWNER}/{APP_NAME}/releases/latest"
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github.v4+json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json().get('tag_name', None)
+    return None
+
+def get_latest_launcher_url(version):
+    if not version:
+        return None, None
+    
+    url = f"https://api.github.com/repos/{OWNER}/{APP_NAME}/releases/tags/{version}"
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github.v4+json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return None, None
+    
+    release = response.json()
+    for asset in release['assets']:
+        if asset['name'].startswith(f"Twilight.Studios.Launcher.Setup.{version}.exe"):
+            return asset['url'], asset['size']
+    
+    return None, None
 
 @app.route("/api/validate-access", methods=["POST"])
 def validate_access():
@@ -258,5 +312,43 @@ def download_game():
     content_disposition = response.headers.get('content-disposition', 'attachment; filename=game.zip')
     return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream', 'Content-Length': str(game_file_size)})
 
+@app.route("/updates/<path>")
+def updates(path: str):
+    path = path.replace(" ", ".")
+    
+    url = f"https://api.github.com/repos/{OWNER}/{APP_NAME}/releases/latest"
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/vnd.github.v4+json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200: abort(404)
+    
+    assets_url = response.json()['url'] + "/assets"
+    response = requests.get(assets_url, headers=headers)
+    if response.status_code != 200: abort(404)
+    
+    found = None
+    for asset in response.json():
+        if asset['name'] == path:
+            found = asset['url']
+            
+    if not found: abort(404)
+        
+    headers = {
+        "Authorization": f"token {TOKEN}",
+        "Accept": "application/octet-stream"
+    }
+    
+    response = requests.get(found, headers=headers, stream=True)
+    if response.status_code != 200: abort(404)
+    
+    def generate():
+        for chunk in response.iter_content(chunk_size=8192):
+            yield chunk
+
+    content_disposition = response.headers.get('content-disposition', 'attachment;')
+    return Response(generate(), headers={'Content-Disposition': content_disposition, 'Content-Type': 'application/octet-stream'})
+ 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
