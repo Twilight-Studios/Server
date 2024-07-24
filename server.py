@@ -299,21 +299,26 @@ def get_all_games():
     access_keys = check_user_exist(access_key)
     if not access_keys: abort(404)
 
-    game_infos = []
     games = get_games()
 
-    for game_obj in access_keys[access_key]:
+    async def fetch_game_info(game_obj):
         game_id = list(game_obj.keys())[0]
-        if game_id not in games: continue
+        if game_id not in games:
+            return None
         game_state = game_obj[game_id]
+        return await get_game_info(game_id, game_state)
 
-        game_info = asyncio.run(get_game_info(game_id, game_state))
-        if not game_info: continue
+    async def gather_game_infos():
+        coroutines = [fetch_game_info(game_obj) for game_obj in access_keys[access_key]]
+        results = await asyncio.gather(*coroutines)
+        return [result for result in results if result]
 
-        game_infos.append(game_info)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    game_infos = loop.run_until_complete(gather_game_infos())
+    loop.close()
 
     return jsonify(game_infos)
-
 
 @app.route("/api/download-game", methods=["POST"])
 def download_game():
