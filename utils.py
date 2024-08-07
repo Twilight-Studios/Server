@@ -1,6 +1,6 @@
 import github, aiohttp, asyncio
 
-def check_user_exist(access_key) -> dict | False:
+def check_user_exist(access_key) -> dict | bool:
     access_keys = github.load_file("access.json")
 
     if access_key not in access_keys.keys(): return False
