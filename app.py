@@ -32,7 +32,7 @@ def validate_access():
         abort(400)
 
     access_keys = utils.check_user_exist(access_key)
-    if not access_keys: abort(404)
+    if not access_keys: abort(403)
 
     return "", 200
 
@@ -48,15 +48,15 @@ def get_game():
         abort(400)
 
     game = utils.check_game_available(access_key, game_id, game_branch)
-    if not game: abort(404)
+    if not game: abort(403)
 
     game_info = asyncio.run(utils.get_game_info(game_id, game_branch))
-    if not game_info: abort(404)
+    if not game_info: abort(406)
 
     return jsonify(game_info)
 
 
-@app.route("/api/get-all-games", methods=["POST"])
+@app.route("/api/get-all-games", methods=["POST"]) # TODO: Add improved error validation
 def get_all_games():
     try:
         json_file = request.get_json()
@@ -65,7 +65,7 @@ def get_all_games():
         abort(400)
 
     access_keys = utils.check_user_exist(access_key)
-    if not access_keys: abort(404)
+    if not access_keys: abort(403)
 
     games = utils.get_games()
 
@@ -100,17 +100,17 @@ def download_game():
         abort(400)
 
     game = utils.check_game_available(access_key, game_id, game_branch)
-    if not game: abort(404)
+    if not game: abort(403)
 
     game_file_url, game_file_size = utils.get_game_file(game_id, game_branch, platform)
-    if not game_file_url: abort(404)
+    if not game_file_url: abort(406)
 
     generate, headers = github.stream_content(game_file_url, "game.zip", game_file_size)
     if generate == None: abort(500)
     
     return Response(generate(), headers=headers)
 
-@app.route("/updates/<path>")
+@app.route("/updates/<path>") # Only used if launcher has custom update settings.
 def updates(path: str):
     path = path.replace(" ", "-")
     
