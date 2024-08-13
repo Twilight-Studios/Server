@@ -46,11 +46,16 @@ def get_game():
         game_branch = json_file['branch']
     except:
         abort(400)
+        
+    minimal = False
+    if 'minimal' in json_file:
+        if type(json_file['minimal']) == bool: 
+            minimal = json_file['minimal']
 
     game = utils.check_game_available(access_key, game_id, game_branch)
     if not game: abort(403)
 
-    game_info = asyncio.run(utils.get_game_info(game_id, game_branch))
+    game_info = asyncio.run(utils.get_game_info(game_id, game_branch, minimal))
     if not game_info: abort(406)
 
     return jsonify(game_info)
@@ -63,6 +68,11 @@ def get_all_games():
         access_key = json_file['key']
     except:
         abort(400)
+    
+    minimal = False
+    if 'minimal' in json_file:
+        if type(json_file['minimal']) == bool: 
+            minimal = json_file['minimal']
 
     access_keys = utils.check_user_exist(access_key)
     if not access_keys: abort(403)
@@ -74,7 +84,7 @@ def get_all_games():
         if game_id not in games.keys():
             return None
         game_branch = game_obj[game_id]
-        return await utils.get_game_info(game_id, game_branch)
+        return await utils.get_game_info(game_id, game_branch, minimal)
 
     async def gather_game_infos():
         coroutines = [fetch_game_info(game_obj) for game_obj in access_keys[access_key]]

@@ -71,35 +71,48 @@ def get_game_file(game_id, game_branch, platform) -> tuple[str, int] | None:
     return game_asset_url, game_asset_size
 
 
-async def get_game_info(game_id, game_branch) -> dict:
+async def get_game_info(game_id, game_branch, minimal=False) -> dict: # TODO: Sanitize settings.json outputs
     async with aiohttp.ClientSession() as session:
-        files_to_fetch = ["art/icon.png", "art/logo.png", "art/cover.png", 
-                          "art/background.png", "art/patch.png", "settings.json"]
         
-        patch_note_urls = await github.load_file_async("notes", session, branch=game_id, return_github_json_wrapper=True)
-        for note in patch_note_urls: files_to_fetch.append(f"notes/{note['name']}")
-
+        if not minimal:
+            files_to_fetch = ["art/icon.png", "art/logo.png", "art/cover.png", 
+                        "art/background.png", "art/patch.png", "settings.json"]
+            
+            patch_note_urls = await github.load_file_async("notes", session, branch=game_id, return_github_json_wrapper=True)
+            for note in patch_note_urls: files_to_fetch.append(f"notes/{note['name']}")
+            
+        else:
+            files_to_fetch = ["art/cover.png", "settings.json"]
+        
         coroutines = [github.load_file_async(file_path, session, branch=game_id) for file_path in files_to_fetch]
         results = await asyncio.gather(*coroutines)
 
-        b_icon, b_logo, b_cover, b_background, b_patch, settings, patch_note_titles = results[:7]
-        b_patch_notes = results[7:]
+        if not minimal:
+            b_icon, b_logo, b_cover, b_background, b_patch, settings, patch_note_titles = results[:7]
+            b_patch_notes = results[7:]
 
-        game_info = {
-            "art": {
-                "icon": b_icon,
-                "logo": b_logo,
-                "cover": b_cover,
-                "background": b_background,
-                "patch": b_patch
-            },
+            return {
+                "art": {
+                    "icon": b_icon,
+                    "logo": b_logo,
+                    "cover": b_cover,
+                    "background": b_background,
+                    "patch": b_patch
+                },
+                "settings": settings,
+                "notes": {
+                    "titles": patch_note_titles,
+                    "patch_notes": b_patch_notes
+                },
+                "id": game_id,
+                "branch": game_branch
+            }
+
+        b_cover, settings = results
+            
+        return {
+            "art": { "cover": b_cover },
             "settings": settings,
-            "notes": {
-                "titles": patch_note_titles,
-                "patch_notes": b_patch_notes
-            },
             "id": game_id,
             "branch": game_branch
         }
-
-        return game_info
