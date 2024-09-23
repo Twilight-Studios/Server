@@ -1,9 +1,9 @@
 from flask import Flask, render_template, abort, request, jsonify, Response
-import asyncio, os, dotenv, github, utils
+import asyncio, os, dotenv, github, auth, games
 
 app = Flask(__name__)
 dotenv.load_dotenv()
-github.setup("Twilight-Studios", "Games", "Launcher", os.getenv("TOKEN"))
+github.setup("Twilight-Studios", "Games", "Launcher", os.getenv("TOKEN"), True)
 
 @app.route("/")
 def home():
@@ -22,72 +22,38 @@ def download_launcher():
         
     return Response(generate(), headers=headers)
 
-
 @app.route("/api/validate-access", methods=["POST"])
 def validate_access():
     try:
         json_file = request.get_json()
-        access_key = json_file['key']
+        playtester_id = json_file['playtester_id']
     except:
         abort(400)
 
-    access_keys = utils.check_user_exist(access_key)
-    if not access_keys: abort(403)
+    playtester_id = auth.get_playtester(playtester_id)
+    if not playtester_id: abort(403)
 
     return "", 200
-
-
-@app.route("/api/get-game", methods=["POST"])
-def get_game():
-    try:
-        json_file = request.get_json()
-        access_key = json_file['key']
-        game_id = json_file['id']
-        game_branch = json_file['branch']
-    except:
-        abort(400)
-        
-    minimal = False
-    if 'minimal' in json_file:
-        if type(json_file['minimal']) == bool: 
-            minimal = json_file['minimal']
-
-    game = utils.check_game_available(access_key, game_id, game_branch)
-    if not game: abort(403)
-
-    game_info = asyncio.run(utils.get_game_info(game_id, game_branch, minimal))
-    if not game_info: abort(406)
-
-    return jsonify(game_info)
 
 
 @app.route("/api/get-all-games", methods=["POST"]) # TODO: Add improved error validation
 def get_all_games():
     try:
         json_file = request.get_json()
-        access_key = json_file['key']
+        playtester_id = json_file['playtester_id']
     except:
         abort(400)
-    
-    minimal = False
-    if 'minimal' in json_file:
-        if type(json_file['minimal']) == bool: 
-            minimal = json_file['minimal']
 
-    access_keys = utils.check_user_exist(access_key)
-    if not access_keys: abort(403)
+    playtester = auth.get_playtester(playtester_id)
+    if not playtester: abort(403)
 
-    games = utils.get_games()
+    game_ids = games.get_game_ids(whitelist_branches=playtester.keys())
 
-    async def fetch_game_info(game_obj):
-        game_id = list(game_obj.keys())[0]
-        if game_id not in games.keys():
-            return None
-        game_branch = game_obj[game_id]
-        return await utils.get_game_info(game_id, game_branch, minimal)
+    async def fetch_game_info(game_id):
+        return await games.get_game_metadata(game_id, get_cover=True)
 
     async def gather_game_infos():
-        coroutines = [fetch_game_info(game_obj) for game_obj in access_keys[access_key]]
+        coroutines = [fetch_game_info(game_id) for game_id in game_ids]
         results = await asyncio.gather(*coroutines)
         return [result for result in results if result]
 
@@ -95,30 +61,13 @@ def get_all_games():
     asyncio.set_event_loop(loop)
     game_infos = loop.run_until_complete(gather_game_infos())
     loop.close()
+        
+    for game in game_infos:
+        sanitized_settings = games.sanitize_settings_metadata(game['settings'], playtester[game['id']])
+        if sanitized_settings == None: game_infos.remove(game)
+        else: game["settings"] = sanitized_settings
 
     return jsonify(game_infos)
-
-@app.route("/api/download-game", methods=["POST"])
-def download_game():
-    try:
-        json_file = request.get_json()
-        access_key = json_file['key']
-        game_id = json_file['id']
-        game_branch = json_file['branch']
-        platform = json_file['platform']
-    except:
-        abort(400)
-
-    game = utils.check_game_available(access_key, game_id, game_branch)
-    if not game: abort(403)
-
-    game_file_url, game_file_size = utils.get_game_file(game_id, game_branch, platform)
-    if not game_file_url: abort(406)
-
-    generate, headers = github.stream_content(game_file_url, "game.zip", game_file_size)
-    if generate == None: abort(500)
-    
-    return Response(generate(), headers=headers)
 
 @app.route("/updates/<path>") # Only used if launcher has custom update settings.
 def updates(path: str):
@@ -141,4 +90,4 @@ def updates(path: str):
 
 
 if __name__ == "__main__":
-    app.run(threaded=True)
+    app.run(debug=True, threaded=True)

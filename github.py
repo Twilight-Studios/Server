@@ -1,14 +1,15 @@
 import requests, json, base64, aiohttp
 
-def setup(repo_owner: str, games_repo: str, launcher_repo: str, token: str):
-    global REPO_OWNER, GAMES_REPO, LAUNCHER_REPO, TOKEN
+def setup(repo_owner: str, games_repo: str, launcher_repo: str, token: str, is_beta: bool):
+    global REPO_OWNER, GAMES_REPO, LAUNCHER_REPO, TOKEN, BASE_BRANCH
     REPO_OWNER = repo_owner
     GAMES_REPO = games_repo
     LAUNCHER_REPO = launcher_repo
     TOKEN = token
+    BASE_BRANCH = "beta" if is_beta else "main"
 
 def get_all_games_repo_branches() -> dict:
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{GAMES_REPO}/branches"
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{GAMES_REPO}/branches?ref={BASE_BRANCH}"
     headers = {
         "Authorization": f"token {TOKEN}",
         "Accept": "application/vnd.github.v4+json"
@@ -22,8 +23,8 @@ def load_file(file_path: str, branch: str = None, return_github_json_wrapper = F
     
     is_json = file_path.endswith(".json")
     
-    if branch:
-        url += f"?ref={branch}"
+    if branch: url += f"?ref={branch}"
+    else: url += f"?ref={BASE_BRANCH}"
 
     headers = {
         "Authorization": f"token {TOKEN}",
@@ -47,8 +48,8 @@ async def load_file_async(file_path: str, session: aiohttp.ClientSession, branch
     
     is_json = file_path.endswith(".json")
     
-    if branch:
-        url += f"?ref={branch}"
+    if branch: url += f"?ref={branch}"
+    else: url += f"?ref={BASE_BRANCH}"
     
     headers = {
         "Authorization": f"token {TOKEN}",
