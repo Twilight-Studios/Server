@@ -27,15 +27,15 @@ def get_game_ids(whitelist_branches: list[str] = []) -> dict[str, list]:
 
     return games
 
-async def get_game_metadata(game_id: str, get_all=False, get_icon=False, get_logo=False, get_cover=False, get_background=False, get_patch_image=False, get_patch_notes=False):
+async def get_game_metadata(game_id: str, get_all=False, get_art=False, get_icon=False, get_logo=False, get_cover=False, get_background=False, get_patch_image=False, get_patch_notes=False):
     async with aiohttp.ClientSession() as session:
         files_to_fetch = [{"name": "settings", "path" : "settings.json"}]
         
-        if get_icon or get_all: files_to_fetch.append({"name": "icon", "path" : "art/icon.png"})
-        if get_logo or get_all: files_to_fetch.append({"name": "logo", "path" : "art/logo.png"})
-        if get_cover or get_all: files_to_fetch.append({"name": "cover", "path" : "art/cover.png"})
-        if get_background or get_all: files_to_fetch.append({"name": "background", "path" : "art/background.png"})
-        if get_patch_image or get_all: files_to_fetch.append({"name": "patch", "path" : "art/patch.png"})
+        if get_icon or get_all or get_art or get_art: files_to_fetch.append({"name": "icon", "path" : "art/icon.png"})
+        if get_logo or get_all or get_art: files_to_fetch.append({"name": "logo", "path" : "art/logo.png"})
+        if get_cover or get_all or get_art: files_to_fetch.append({"name": "cover", "path" : "art/cover.png"})
+        if get_background or get_all or get_art: files_to_fetch.append({"name": "background", "path" : "art/background.png"})
+        if get_patch_image or get_all or get_art: files_to_fetch.append({"name": "patch", "path" : "art/patch.png"})
         
         non_patch_note_content_amount = len(files_to_fetch)
         

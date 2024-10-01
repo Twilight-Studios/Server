@@ -47,16 +47,31 @@ def get_all_games():
     playtester = auth.get_playtester(playtester_id)
     if not playtester: abort(403)
     
-    minimal = False
-    if 'minimal' in json_file:
-        if type(json_file['minimal']) == bool: 
-            minimal = json_file['minimal']
+    get_all = False
+    get_art = False
+    get_cover = False
+    get_patch = False
+    
+    if 'get_all' in json_file:
+        if type(json_file['get_all']) == bool: 
+            get_all = json_file['get_all']
+            
+    if 'get_art' in json_file:
+        if type(json_file['get_art']) == bool: 
+            get_art = json_file['get_art']
+    
+    if 'get_cover' in json_file:
+        if type(json_file['get_cover']) == bool: 
+            get_cover = json_file['get_cover']
+            
+    if 'get_patch' in json_file:
+        if type(json_file['get_patch']) == bool: 
+            get_patch = json_file['get_patch']
 
     game_ids = games.get_game_ids(whitelist_branches=playtester.keys())
 
     async def fetch_game_metadata(game_id):
-        if minimal: return await games.get_game_metadata(game_id, get_cover=True)
-        else: return await games.get_game_metadata(game_id, get_all=True)
+        return await games.get_game_metadata(game_id, get_all=get_all, get_art=get_art, get_cover=get_cover, get_patch_notes=get_patch)
 
     async def gather_game_metadatas():
         coroutines = [fetch_game_metadata(game_id) for game_id in game_ids]
@@ -84,25 +99,39 @@ def get_game():
         game_id = json_file['game_id']
     except:
         abort(400)
-
+        
     playtester = auth.get_playtester(playtester_id)
     if not playtester: abort(403)
     if game_id not in playtester: abort(406)
     
-    minimal = False
-    if 'minimal' in json_file:
-        if type(json_file['minimal']) == bool: 
-            minimal = json_file['minimal']
+    get_all = False
+    get_art = False
+    get_cover = False
+    get_patch = False
+    
+    if 'get_all' in json_file:
+        if type(json_file['get_all']) == bool: 
+            get_all = json_file['get_all']
+            
+    if 'get_art' in json_file:
+        if type(json_file['get_art']) == bool: 
+            get_art = json_file['get_art']
+    
+    if 'get_cover' in json_file:
+        if type(json_file['get_cover']) == bool: 
+            get_cover = json_file['get_cover']
+            
+    if 'get_patch' in json_file:
+        if type(json_file['get_patch']) == bool: 
+            get_patch = json_file['get_patch']
 
     async def fetch_game_metadata():
-        if minimal: return await games.get_game_metadata(game_id, get_cover=True)
-        else: return await games.get_game_metadata(game_id, get_all=True)
+        return await games.get_game_metadata(game_id, get_all=get_all, get_art=get_art, get_cover=get_cover, get_patch_notes=get_patch)
 
     game_metadata = asyncio.run(fetch_game_metadata())
     
     sanitized_metadata = games.sanitize_game_metadata(game_metadata, playtester[game_metadata['id']])
     if not sanitized_metadata: abort(406)
-    print(sanitized_metadata)
 
     return jsonify(sanitized_metadata)
 
