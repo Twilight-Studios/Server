@@ -31,7 +31,7 @@ async def get_game_metadata(game_id: str, get_all=False, get_art=False, get_icon
     async with aiohttp.ClientSession() as session:
         files_to_fetch = [{"name": "settings", "path" : "settings.json"}]
         
-        if get_icon or get_all or get_art or get_art: files_to_fetch.append({"name": "icon", "path" : "art/icon.png"})
+        if get_icon or get_all or get_art: files_to_fetch.append({"name": "icon", "path" : "art/icon.png"})
         if get_logo or get_all or get_art: files_to_fetch.append({"name": "logo", "path" : "art/logo.png"})
         if get_cover or get_all or get_art: files_to_fetch.append({"name": "cover", "path" : "art/cover.png"})
         if get_background or get_all or get_art: files_to_fetch.append({"name": "background", "path" : "art/background.png"})
