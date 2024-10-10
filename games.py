@@ -4,12 +4,19 @@ def sanitize_game_metadata(metadata, available_branches):
     for key, value in metadata['settings'].items(): metadata[key] = value
     del metadata['settings']
     
-    game_branches = list(metadata['game_branches'].keys())
+    metadata['branches'] = metadata['game_branches'] # Temporary because changing GitHub jsons will break live build
+    del metadata['game_branches']
+    
+    game_branches = list(metadata['branches'].keys())
     
     for branch in game_branches:
-        if branch not in available_branches: del metadata['game_branches'][branch]
+        if branch not in available_branches: del metadata['branches'][branch]
+        else: # Temporary because changing GitHub jsons will break live build
+            metadata['branches'][branch]['id'] = branch # This should be permanent btw
+            metadata['branches'][branch]['version'] = metadata['branches'][branch]['latest_version']
+            del metadata['branches'][branch]['latest_version']
     
-    if len(metadata['game_branches'].keys()) == 0: return None
+    if len(metadata['branches'].keys()) == 0: return None
     return metadata
 
 def get_game_ids(whitelist_branches: list[str] = []) -> dict[str, list]:
@@ -55,7 +62,9 @@ async def get_game_metadata(game_id: str, get_all=False, get_art=False, get_icon
         for index, data in enumerate(results):
             metadeta[files_to_fetch[index]["name"]] = data
             
-        if get_patch_notes or get_all: metadeta["patch_notes"] = patch_notes
+        if get_patch_notes or get_all: # TODO: Restructure patch note JSONS
+            metadeta["patch_notes_metadata"] = patch_notes[0]
+            metadeta["patch_notes"] = patch_notes[1:]
         metadeta['id'] = game_id
         
         return metadeta
